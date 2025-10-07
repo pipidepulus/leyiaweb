@@ -1,0 +1,20 @@
+:10000 {
+	encode gzip zstd
+
+	@static {
+		file {
+			root /srv
+			try_files {path}
+		}
+	}
+
+	handle @static {
+		root * /srv
+		file_server
+	}
+
+	# Fallback todo lo que no sea estático al backend interno
+	handle {
+		reverse_proxy 127.0.0.1:8001
+	}
+}
