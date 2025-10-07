@@ -23,6 +23,7 @@ RUN pip install -r requirements.txt
 
 # Install reflex helper utilities like bun/node
 COPY rxconfig.py ./
+ENV DOCKER_BUILD=1
 RUN reflex init
 
 # Install pre-cached frontend dependencies (if exist)

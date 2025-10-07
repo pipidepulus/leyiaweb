@@ -50,6 +50,7 @@ def _resolve_db_url() -> str:
 	Prioriza:
 	  1. DATABASE_URL (Postgres requerida en este proyecto)
 	  2. Si USE_SQLITE_FOR_DEV=1 y estamos en dev, genera SQLite local.
+	  3. En build de Docker (cuando DOCKER_BUILD=1), usa SQLite temporal.
 	"""
 	db_url = os.getenv("DATABASE_URL", "").strip()
 	if db_url:
@@ -58,6 +59,10 @@ def _resolve_db_url() -> str:
 	# Fallback opcional solo para experimentación en dev.
 	if ENV != "prod" and os.getenv("USE_SQLITE_FOR_DEV") == "1":
 		return f"sqlite:///{ROOT_DIR / 'dev_local.sqlite3'}"
+
+	# Durante el build de Docker, reflex init no necesita DB real
+	if os.getenv("DOCKER_BUILD") == "1":
+		return f"sqlite:///{ROOT_DIR / 'build_temp.sqlite3'}"
 
 	# Falla claramente si falta en flujo normal.
 	raise RuntimeError(
