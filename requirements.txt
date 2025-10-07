@@ -47,7 +47,7 @@ python-multipart==0.0.20
 python-socketio==5.13.0
 pytz==2025.2
 redis==6.2.0
-reflex==0.8.14  
+reflex==0.8.14.post1 
 reflex-local-auth==0.1.0
 regex==2024.11.6
 requests==2.32.4
