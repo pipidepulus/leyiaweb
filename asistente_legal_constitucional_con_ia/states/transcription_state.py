@@ -173,6 +173,7 @@ class TranscriptionState(rx.State):
                 if polled_transcript.status == assemblyai.TranscriptStatus.completed:
                     async with self:
                         self.progress_message = "¡Éxito! Generando notebook..."
+                        self.error_message = ""  # Limpiar cualquier error residual
                     
                     await self._process_successful_transcription(
                         polled_transcript, 
@@ -182,6 +183,7 @@ class TranscriptionState(rx.State):
                     async with self:
                         self.transcribing = False
                         self.progress_message = ""
+                        self.error_message = ""  # Asegurar que está limpio al final
                         self._pending_audio_data = b""
                         self._pending_filename = ""
                         self._pending_workspace_id = ""
