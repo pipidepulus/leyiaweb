@@ -41,7 +41,7 @@ RUN REFLEX_API_URL=${API_URL:-http://localhost:$PORT} reflex export --loglevel d
 FROM python:3.12.3-slim
 
 # Install Caddy and redis server inside image
-RUN apt-get update -y && apt-get install -y caddy redis-server && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y caddy redis-server unzip && rm -rf /var/lib/apt/lists/*
 
 ARG PORT API_URL
 ENV PATH="/app/.venv/bin:$PATH" PORT=$PORT REFLEX_API_URL=${API_URL:-http://localhost:$PORT} REFLEX_REDIS_URL=redis://localhost PYTHONUNBUFFERED=1
