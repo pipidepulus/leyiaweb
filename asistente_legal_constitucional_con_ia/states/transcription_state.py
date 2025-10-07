@@ -41,6 +41,12 @@ class TranscriptionState(rx.State):
     error_message: str = ""
     uploaded_files: list[str] = []
 
+    # Nueva variable para almacenar temporalmente los datos del archivo
+    _pending_audio_data: bytes = b""
+    _pending_filename: str = ""
+
+    # ...existing code...7102025-1646
+
     async def get_user_workspace_id(self) -> str:
         """Obtiene el workspace ID del usuario autenticado usando auth local."""
         try:
@@ -68,77 +74,125 @@ class TranscriptionState(rx.State):
             print(f"DEBUG: AuthState no disponible o error leyendo user_id: {e}")
             return "public"
 
-    @rx.event(background=True)
+    @rx.event  # ← SIN background=True, este es rápido
     async def handle_transcription_request(self, files: List[rx.UploadFile]):
         """
-        Maneja todo el proceso de transcripción, desde la subida
-        hasta el sondeo, siguiendo el patrón robusto de AssemblyAI.
+        Handler de upload: Solo recibe y valida el archivo.
+        Delega el procesamiento pesado a process_transcription.
         """
         if not files:
             return
 
         file = files[0]
-        try:
-            # 1. Validar y leer el archivo
-            # ✅ CORREGIDO: Usar file.name en lugar de file.filename
-            if not file.content_type == "audio/mpeg":
-                yield rx.toast.error(f"'{file.name}' no es un MP3.")
-                return
+        
+        # Validación rápida
+        if not file.content_type == "audio/mpeg":
+            yield rx.toast.error(f"'{file.name}' no es un MP3.")
+            return
 
+        # Leer el archivo (esto es rápido, < 1 segundo)
+        try:
+            self._pending_audio_data = await file.read()
+            self._pending_filename = file.name
+            self.uploaded_files = [file.name]
             self.transcribing = True
-            # ✅ CORREGIDO: Usar file.name en lugar de file.filename
-            self.progress_message = f"Subiendo '{file.name}'..."
+            self.progress_message = f"Archivo '{file.name}' recibido. Iniciando transcripción..."
             self.error_message = ""
             yield
+            
+            # Llamar al procesamiento en background
+            return TranscriptionState.process_transcription  # type: ignore
+            
+        except Exception as e:
+            self.error_message = f"Error al leer el archivo: {str(e)}"
+            yield rx.toast.error(self.error_message)
 
-            audio_data = await file.read()
-            self.uploaded_files = [file.name]
+    @rx.event(background=True)  # ← CON background=True para operaciones largas
+    async def process_transcription(self):
+        """
+        Procesa la transcripción de audio usando AssemblyAI.
+        Se ejecuta en background para evitar timeouts.
+        """
+        async with self:  # Adquirir el estado
+            audio_data = self._pending_audio_data
+            filename = self._pending_filename
+            
+            if not audio_data:
+                self.error_message = "No hay datos de audio para procesar"
+                self.transcribing = False
+                return
 
-            # 2. Configurar AssemblyAI y ENVIAR el trabajo
+        try:
+            # Configurar AssemblyAI
             api_key = os.getenv("ASSEMBLYAI_API_KEY")
             if not api_key:
                 raise ValueError("API key de AssemblyAI no configurada en .env")
 
             assemblyai.settings.http_timeout = 300
-
             assemblyai.settings.api_key = api_key
             transcriber = assemblyai.Transcriber()
-            config = assemblyai.TranscriptionConfig(speaker_labels=True, language_code="es")
+            config = assemblyai.TranscriptionConfig(
+                speaker_labels=True, 
+                language_code="es"
+            )
 
-            # Usamos .submit() que devuelve el control inmediatamente
-            submitted_transcript = await asyncio.to_thread(transcriber.submit, audio_data, config)
+            # Enviar el trabajo
+            async with self:
+                self.progress_message = f"Enviando '{filename}' a AssemblyAI..."
+            
+            submitted_transcript = await asyncio.to_thread(
+                transcriber.submit, 
+                audio_data, 
+                config
+            )
 
-            self.progress_message = f"Transcripción en cola (ID: {submitted_transcript.id})."
-            yield
+            async with self:
+                self.progress_message = f"Transcripción en cola (ID: {submitted_transcript.id})."
 
-            # 3. Sondear (POLL) el estado de la transcripción
+            # Sondear el estado
             while True:
-                polled_transcript = await asyncio.to_thread(assemblyai.Transcript.get_by_id, submitted_transcript.id)
+                polled_transcript = await asyncio.to_thread(
+                    assemblyai.Transcript.get_by_id, 
+                    submitted_transcript.id
+                )
 
                 if polled_transcript.status == assemblyai.TranscriptStatus.completed:
-                    self.progress_message = "¡Éxito! Generando notebook..."
-                    yield
-                    # ✅ CORREGIDO: Pasar file.name a la función de procesamiento
-                    await self._process_successful_transcription(polled_transcript, file.name)
-
-                    yield rx.toast.success(f"¡Notebook de '{file.name}' generado!")
-
+                    async with self:
+                        self.progress_message = "¡Éxito! Generando notebook..."
+                    
+                    await self._process_successful_transcription(
+                        polled_transcript, 
+                        filename
+                    )
+                    
+                    async with self:
+                        self.transcribing = False
+                        self.progress_message = ""
+                        self._pending_audio_data = b""
+                        self._pending_filename = ""
+                    
+                    yield rx.toast.success(f"¡Notebook de '{filename}' generado!")
                     break
 
                 elif polled_transcript.status == assemblyai.TranscriptStatus.error:
-                    raise RuntimeError(f"Error de AssemblyAI: {polled_transcript.error}")
+                    raise RuntimeError(
+                        f"Error de AssemblyAI: {polled_transcript.error}"
+                    )
                 else:
-                    self.progress_message = f"Estado: {polled_transcript.status}. " "Comprobando de nuevo en 5s..."
-                    yield
+                    async with self:
+                        self.progress_message = (
+                            f"Estado: {polled_transcript.status}. "
+                            "Comprobando de nuevo en 5s..."
+                        )
                     await asyncio.sleep(5)
 
         except Exception as e:
-            self.error_message = f"Error en el proceso: {str(e)}"
+            async with self:
+                self.error_message = f"Error en el proceso: {str(e)}"
+                self.transcribing = False
+                self._pending_audio_data = b""
+                self._pending_filename = ""
             yield rx.toast.error(self.error_message)
-        finally:
-            self.transcribing = False
-            self.progress_message = ""
-            yield
 
     async def _process_successful_transcription(self, transcript: assemblyai.Transcript, filename: str):
         """Helper para procesar una transcripción exitosa."""
