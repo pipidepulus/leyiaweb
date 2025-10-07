@@ -44,14 +44,22 @@ class TranscriptionState(rx.State):
     # Variables temporales para pasar datos entre handlers
     _pending_audio_data: bytes = b""
     _pending_filename: str = ""
+    _pending_workspace_id: str = ""  # Workspace ID del usuario para background task
 
-
+    
     
 
     async def get_user_workspace_id(self) -> str:
         """Obtiene el workspace ID del usuario autenticado usando auth local."""
         try:
-            auth_state = await self.get_state(lauth.LocalAuthState)  # type: ignore[attr-defined]
+            # Intentar obtener el estado de autenticación
+            try:
+                auth_state = await self.get_state(lauth.LocalAuthState)  # type: ignore[attr-defined]
+            except Exception as e:
+                # Si falla (ej. en background task), retornar public
+                print(f"DEBUG: No se pudo acceder a AuthState (posiblemente en background): {e}")
+                return "public"
+            
             user = getattr(auth_state, "authenticated_user", None)
             if user is not None:
                 for k in ("id", "user_id", "username", "email"):
@@ -96,6 +104,9 @@ class TranscriptionState(rx.State):
             self.transcribing = True
             self.progress_message = f"Archivo '{file.name}' recibido. Iniciando transcripción..."
             self.error_message = ""
+            
+            # Obtener workspace_id ANTES de entrar al background task
+            self._pending_workspace_id = await self.get_user_workspace_id()
             
             # Almacenar datos temporalmente
             self._pending_audio_data = await file.read()
@@ -176,6 +187,7 @@ class TranscriptionState(rx.State):
                         self.progress_message = ""
                         self._pending_audio_data = b""
                         self._pending_filename = ""
+                        self._pending_workspace_id = ""
                     
                     yield rx.toast.success(f"¡Notebook de '{filename}' generado!")
                     break
@@ -198,6 +210,7 @@ class TranscriptionState(rx.State):
                 self.transcribing = False
                 self._pending_audio_data = b""
                 self._pending_filename = ""
+                self._pending_workspace_id = ""
             yield rx.toast.error(self.error_message)
 
     async def _process_successful_transcription(self, transcript: assemblyai.Transcript, filename: str):
@@ -215,16 +228,19 @@ class TranscriptionState(rx.State):
 
         await self._create_transcription_notebook(transcription_text, notebook_title, filename, duration_fmt)
 
-        self.current_transcription = "SUCCESS"
-        self.uploaded_files = []
+        async with self:
+            self.current_transcription = "SUCCESS"
+            self.uploaded_files = []
+        
         await self.load_user_transcriptions()
         # yield rx.toast.success(f"¡Notebook de '{filename}' generado!")
 
     async def _create_transcription_notebook(self, transcription_text: str, title: str, filename: str, duration: str):
-
-        workspace_id = await self.get_user_workspace_id()
-
         """Crea un notebook y el registro de transcripción en la BD."""
+        # Usar el workspace_id almacenado en lugar de llamar a get_user_workspace_id()
+        async with self:
+            workspace_id = self._pending_workspace_id or "public"
+        
         with rx.session() as session:
             from ..models.database import Notebook
 
