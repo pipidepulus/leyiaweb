@@ -125,10 +125,11 @@ class TranscriptionState(rx.State):
         Procesa la transcripción usando AssemblyAI.
         Se ejecuta en background para evitar timeouts de lock.
         """
-        # Copiar datos en variables locales
+        # Copiar datos en variables locales y limpiar mensajes de error previos
         async with self:
             audio_data = self._pending_audio_data
             filename = self._pending_filename
+            self.error_message = ""  # Limpiar errores de ejecuciones anteriores
             
             if not audio_data:
                 self.error_message = "No hay datos de audio para procesar"
