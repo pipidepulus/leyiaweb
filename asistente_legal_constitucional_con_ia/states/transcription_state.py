@@ -53,12 +53,7 @@ class TranscriptionState(rx.State):
         """Obtiene el workspace ID del usuario autenticado usando auth local."""
         try:
             # Intentar obtener el estado de autenticación
-            try:
-                auth_state = await self.get_state(lauth.LocalAuthState)  # type: ignore[attr-defined]
-            except Exception as e:
-                # Si falla (ej. en background task), retornar public
-                print(f"DEBUG: No se pudo acceder a AuthState (posiblemente en background): {e}")
-                return "public"
+            auth_state = await self.get_state(lauth.LocalAuthState)  # type: ignore[attr-defined]
             
             user = getattr(auth_state, "authenticated_user", None)
             if user is not None:
@@ -80,7 +75,8 @@ class TranscriptionState(rx.State):
                     return str(v)
             return "public"
         except Exception as e:
-            print(f"DEBUG: AuthState no disponible o error leyendo user_id: {e}")
+            # Si falla por cualquier razón (incluyendo background task), retornar public
+            print(f"DEBUG: No se pudo acceder a AuthState: {e}")
             return "public"
 
     @rx.event
@@ -231,8 +227,10 @@ class TranscriptionState(rx.State):
         async with self:
             self.current_transcription = "SUCCESS"
             self.uploaded_files = []
+            # Obtener el workspace_id guardado para pasarlo a load_user_transcriptions
+            workspace_id = self._pending_workspace_id or "public"
         
-        await self.load_user_transcriptions()
+        await self.load_user_transcriptions(workspace_id=workspace_id)
         # yield rx.toast.success(f"¡Notebook de '{filename}' generado!")
 
     async def _create_transcription_notebook(self, transcription_text: str, title: str, filename: str, duration: str):
@@ -267,11 +265,12 @@ class TranscriptionState(rx.State):
             session.commit()
 
     @rx.event
-    async def load_user_transcriptions(self):
+    async def load_user_transcriptions(self, workspace_id: Optional[str] = None):
         """Carga todas las transcripciones del usuario."""
         try:
-
-            workspace_id = await self.get_user_workspace_id()
+            # Si no se proporciona workspace_id, obtenerlo del usuario autenticado
+            if workspace_id is None:
+                workspace_id = await self.get_user_workspace_id()
 
             with rx.session() as session:
                 from ..models.database import AudioTranscription, Notebook
