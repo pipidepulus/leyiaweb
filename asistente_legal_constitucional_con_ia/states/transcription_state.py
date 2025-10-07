@@ -204,6 +204,11 @@ class TranscriptionState(rx.State):
                     await asyncio.sleep(5)
 
         except Exception as e:
+            # Log detallado para debugging
+            import traceback
+            error_detail = f"Error en el proceso: {str(e)}\nTraceback: {traceback.format_exc()}"
+            print(f"DEBUG EXCEPTION: {error_detail}")
+            
             async with self:
                 self.error_message = f"Error en el proceso: {str(e)}"
                 self.transcribing = False
