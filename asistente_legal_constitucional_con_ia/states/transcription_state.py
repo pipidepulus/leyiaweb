@@ -104,8 +104,8 @@ class TranscriptionState(rx.State):
             
             yield
             
-            # Llamar al procesamiento en background
-            return TranscriptionState.process_transcription_background  # type: ignore
+            # Iniciar procesamiento en background usando yield from
+            yield TranscriptionState.process_transcription_background
             
         except Exception as e:
             self.error_message = f"Error al leer archivo: {str(e)}"
