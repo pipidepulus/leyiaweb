@@ -13,7 +13,22 @@ config = context.config
 
 # Load environment variables from .env and prefer DATABASE_URL if present
 load_dotenv()
-db_url = os.getenv("DATABASE_URL")
+
+# Try to import rxconfig to get the same database URL used by the app
+try:
+    import sys
+    from pathlib import Path
+    # Add parent directory to path to import rxconfig
+    root_dir = Path(__file__).parent.parent
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+    
+    from rxconfig import _resolve_db_url
+    db_url = _resolve_db_url()
+except Exception:
+    # Fallback to environment variable
+    db_url = os.getenv("DATABASE_URL")
+
 if db_url:
     config.set_main_option("sqlalchemy.url", db_url)
 

@@ -33,6 +33,10 @@ RUN if [ -f .web/bun.lockb ]; then cd .web && ~/.local/share/reflex/bun/bin/bun 
 # Copy local context to `/app` inside container (see .dockerignore)
 COPY . .
 
+# Initialize temporary SQLite database with schema for build process
+# This is needed because reflex export loads the app which initializes auth
+RUN if [ -d alembic ]; then alembic upgrade head; fi
+
 ARG PORT API_URL
 # Download other npm dependencies and compile frontend
 RUN REFLEX_API_URL=${API_URL:-http://localhost:$PORT} reflex export --loglevel debug --frontend-only --no-zip && mv .web/build/client/* /srv/ && rm -rf .web
