@@ -68,7 +68,7 @@ class TranscriptionState(rx.State):
             print(f"DEBUG: AuthState no disponible o error leyendo user_id: {e}")
             return "public"
 
-    @rx.event
+    @rx.event(background=True)
     async def handle_transcription_request(self, files: List[rx.UploadFile]):
         """
         Maneja todo el proceso de transcripción, desde la subida
