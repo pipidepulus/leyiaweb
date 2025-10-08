@@ -219,6 +219,7 @@ class TranscriptionState(rx.State):
 
     async def _process_successful_transcription(self, transcript: assemblyai.Transcript, filename: str):
         """Helper para procesar una transcripción exitosa."""
+        # ... (la lógica para crear el texto de la transcripción y el notebook_title sigue igual)
         if transcript.utterances:
             lines = [f"**Hablante {utt.speaker}:** {utt.text}" for utt in transcript.utterances]
             transcription_text = "## Transcripción con Identificación de Hablantes\n\n" + "\n\n".join(lines)
@@ -226,20 +227,23 @@ class TranscriptionState(rx.State):
             transcription_text = transcript.text or ""
 
         notebook_title = f"Transcripción - {os.path.splitext(filename)[0]}"
-
         duration_secs = transcript.audio_duration or 0
         duration_fmt = f"{int(duration_secs // 60)}:{int(duration_secs % 60):02d}"
 
+        # Crea el registro en la BD
         await self._create_transcription_notebook(transcription_text, notebook_title, filename, duration_fmt)
 
+        # Obtener el workspace_id guardado
+        workspace_id = self._pending_workspace_id or "public"
+        
+        # 1. Obtener los datos actualizados usando el método auxiliar
+        updated_transcriptions = self._fetch_user_transcriptions_data(workspace_id)
+
+        # 2. Modificar el estado de forma segura desde la tarea en segundo plano
         async with self:
+            self.transcriptions = updated_transcriptions
             self.current_transcription = "SUCCESS"
             self.uploaded_files = []
-            # Obtener el workspace_id guardado para pasarlo a load_user_transcriptions
-            workspace_id = self._pending_workspace_id or "public"
-        
-        await self.load_user_transcriptions(workspace_id=workspace_id)
-        # yield rx.toast.success(f"¡Notebook de '{filename}' generado!")
 
     async def _create_transcription_notebook(self, transcription_text: str, title: str, filename: str, duration: str):
         """Crea un notebook y el registro de transcripción en la BD."""
@@ -274,45 +278,19 @@ class TranscriptionState(rx.State):
 
     @rx.event
     async def load_user_transcriptions(self, workspace_id: Optional[str] = None):
-        """Carga todas las transcripciones del usuario."""
+        """Carga todas las transcripciones del usuario (ejecutado en primer plano)."""
         try:
-            # Si no se proporciona workspace_id, obtenerlo del usuario autenticado
             if workspace_id is None:
                 workspace_id = await self.get_user_workspace_id()
 
-            transcription_list = []
-
-            with rx.session() as session:
-                from ..models.database import AudioTranscription, Notebook
-
-                query = (
-                    session.query(AudioTranscription)
-                    .outerjoin(Notebook, AudioTranscription.notebook_id == Notebook.id)
-                    .filter(AudioTranscription.workspace_id == workspace_id)
-                    .order_by(AudioTranscription.created_at.desc())
-                )
-
-                transcription_list = [
-                    TranscriptionType(
-                        id=t.id,
-                        filename=t.filename,
-                        transcription_text=(t.transcription_text[:200] + "..." if len(t.transcription_text) > 200 else t.transcription_text),
-                        audio_duration=t.audio_duration or "N/A",
-                        created_at=t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "N/A",
-                        updated_at=t.updated_at.strftime("%Y-%m-%d %H:%M") if t.updated_at else "N/A",
-                        notebook_id=t.notebook_id if t.notebook_id else 0,
-                    )
-                    for t in query.all()
-                ]
-
-            async with self:
-                self.transcriptions = transcription_list
-                self.error_message = ""
+            # 1. Obtener datos usando el método auxiliar
+            transcriptions_list = self._fetch_user_transcriptions_data(workspace_id)
+            
+            # 2. Modificar el estado directamente (permitido en eventos de primer plano)
+            self.transcriptions = transcriptions_list
 
         except Exception as e:
             self.error_message = f"Error cargando transcripciones: {e}"
-            async with self:
-                self.error_message = self.error_message
 
     @rx.event
     async def delete_transcription(self, transcription_id: int):
@@ -387,3 +365,35 @@ class TranscriptionState(rx.State):
         """Refresca la lista de transcripciones desde la BD."""
         self.error_message = ""
         await self.load_user_transcriptions()
+
+    # asistente_legal_constitucional_con_ia/states/transcription_state.py
+
+# ... (dentro de la clase TranscriptionState)
+
+    def _fetch_user_transcriptions_data(self, workspace_id: str) -> list[TranscriptionType]:
+        """
+        Método auxiliar que consulta la BD y devuelve los datos de transcripción,
+        pero NO modifica el estado directamente.
+        """
+        with rx.session() as session:
+            from ..models.database import AudioTranscription, Notebook
+
+            query = (
+                session.query(AudioTranscription)
+                .outerjoin(Notebook, AudioTranscription.notebook_id == Notebook.id)
+                .filter(AudioTranscription.workspace_id == workspace_id)
+                .order_by(AudioTranscription.created_at.desc())
+            )
+
+            return [
+                TranscriptionType(
+                    id=t.id,
+                    filename=t.filename,
+                    transcription_text=(t.transcription_text[:200] + "..." if len(t.transcription_text) > 200 else t.transcription_text),
+                    audio_duration=t.audio_duration or "N/A",
+                    created_at=t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else "N/A",
+                    updated_at=t.updated_at.strftime("%Y-%m-%d %H:%M") if t.updated_at else "N/A",
+                    notebook_id=t.notebook_id if t.notebook_id else 0,
+                )
+                for t in query.all()
+            ]
