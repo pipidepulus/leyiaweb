@@ -280,6 +280,8 @@ class TranscriptionState(rx.State):
             if workspace_id is None:
                 workspace_id = await self.get_user_workspace_id()
 
+            transcription_list = []
+
             with rx.session() as session:
                 from ..models.database import AudioTranscription, Notebook
 
@@ -290,7 +292,7 @@ class TranscriptionState(rx.State):
                     .order_by(AudioTranscription.created_at.desc())
                 )
 
-                self.transcriptions = [
+                transcription_list = [
                     TranscriptionType(
                         id=t.id,
                         filename=t.filename,
@@ -302,8 +304,15 @@ class TranscriptionState(rx.State):
                     )
                     for t in query.all()
                 ]
+
+            async with self:
+                self.transcriptions = transcription_list
+                self.error_message = ""
+
         except Exception as e:
             self.error_message = f"Error cargando transcripciones: {e}"
+            async with self:
+                self.error_message = self.error_message
 
     @rx.event
     async def delete_transcription(self, transcription_id: int):
