@@ -1,3 +1,10 @@
+/* Estilo global del fondo de la aplicación */
+body {
+    background: linear-gradient(135deg, #c9d1f5 0%, #d7c8e8 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+}
+
 #chat-input-box::placeholder {
     font-size: 16px;
 }

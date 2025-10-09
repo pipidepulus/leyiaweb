@@ -152,7 +152,7 @@ class TranscriptionState(rx.State):
 
             # Enviar el trabajo
             async with self:
-                self.progress_message = f"Enviando '{filename}' a AssemblyAI..."
+                self.progress_message = f"Procesando '{filename}' ..."
             
             submitted_transcript = await asyncio.to_thread(
                 transcriber.submit, 

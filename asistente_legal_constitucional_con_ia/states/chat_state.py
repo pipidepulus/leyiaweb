@@ -129,6 +129,37 @@ class ChatState(rx.State):
     # OCR completamente deshabilitado (removido). Mantener flag por compatibilidad si alguien la consulta.
     enable_ocr: bool = False
 
+    # Propiedades computadas para formato de números
+    @rx.var
+    def formatted_last_total_tokens(self) -> str:
+        """Retorna tokens de última respuesta formateados con separadores de miles"""
+        return f"{self.last_total_tokens:,}"
+
+    @rx.var
+    def formatted_last_prompt_tokens(self) -> str:
+        """Retorna tokens de entrada formateados"""
+        return f"{self.last_prompt_tokens:,}"
+
+    @rx.var
+    def formatted_last_completion_tokens(self) -> str:
+        """Retorna tokens de salida formateados"""
+        return f"{self.last_completion_tokens:,}"
+
+    @rx.var
+    def formatted_total_tokens(self) -> str:
+        """Retorna tokens totales formateados con separadores de miles"""
+        return f"{self.total_tokens:,}"
+
+    @rx.var
+    def formatted_cost_usd(self) -> str:
+        """Retorna costo formateado con 4 decimales"""
+        return f"{self.cost_usd:.4f}"
+
+    @rx.var
+    def formatted_approx_output_tokens(self) -> str:
+        """Retorna tokens aproximados formateados"""
+        return f"{self.approx_output_tokens:,}"
+
     @staticmethod
     def get_client(api_key: str):
         if api_key:
@@ -388,7 +419,7 @@ class ChatState(rx.State):
             "gpt-4o": (5.00, 15.00),
             "gpt-4o-mini": (0.150, 0.600),
             "gpt-4.1": (5.00, 15.00),
-            "gpt-4.1-mini": (0.300, 1.125),
+            "gpt-4.1-mini": (2.400, 3.600),
             "gpt-4-turbo": (10.00, 30.00),
             "gpt-3.5-turbo": (0.50, 1.50),
         }
@@ -792,6 +823,15 @@ class ChatState(rx.State):
         self.chat_history = []
         self.current_run_id = None
         logger.info("ChatState.limpiar_chat ejecutado.")
+
+    @rx.event
+    def logout_and_cleanup(self):
+        """Limpia el chat y hace logout del usuario."""
+        from ..auth_config import lauth
+        # Primero limpiamos el chat
+        yield ChatState.limpiar_chat
+        # Luego hacemos el logout
+        yield lauth.LocalAuthState.do_logout  # type: ignore[attr-defined]
 
     @rx.event
     async def show_create_notebook_dialog(self):

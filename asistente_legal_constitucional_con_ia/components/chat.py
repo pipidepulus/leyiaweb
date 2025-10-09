@@ -214,7 +214,7 @@ def chat() -> rx.Component:
             rx.fragment(),
         ),
         chat_area(),
-        height="calc(100vh - 60px)",
+        height="100%",
         width="100%",
         overflow="hidden",
         class_name="bg-gray-50",

@@ -15,6 +15,7 @@ from .pages.notebooks_page import notebook_viewer_page, notebooks_page
 from .pages.prompts_page import prompts_page
 from .pages.proyectos_page import ProyectosState, proyectos_page
 from .pages.transcription_page import transcription_page
+from .pages.auth_pages import custom_login_page, custom_register_page
 from .auth_config import lauth
 
 # from asistente_legal_constitucional_con_ia.models.database import Notebook, AudioTranscription (Bajo OJO)
@@ -47,6 +48,7 @@ def public_layout(content: rx.Component) -> rx.Component:
         width="100%",
         height="100vh",
         spacing="0",
+        background="linear-gradient(135deg, #c9d1f5 0%, #d7c8e8 100%)",
     )
 
 
@@ -223,9 +225,9 @@ app.add_page(create_protected_page(lambda: notebook_viewer_page(), "Ver Notebook
 
 app.add_page(create_protected_page(transcription_page, "Transcripción de Audio"), route="/transcription", title="Transcripción de Audio")
 
-# Rutas de autenticación local (páginas provistas por el paquete)
+# Rutas de autenticación local (páginas personalizadas)
 try:
-    app.add_page(lauth.pages.login_page, route="/login", title="Iniciar Sesión")  # type: ignore[attr-defined]
-    app.add_page(lauth.pages.register_page, route="/register", title="Crear Cuenta")  # type: ignore[attr-defined]
+    app.add_page(custom_login_page, route="/login", title="Iniciar Sesión", on_load=ChatState.limpiar_chat)
+    app.add_page(custom_register_page, route="/register", title="Crear Cuenta", on_load=ChatState.limpiar_chat)
 except Exception:
     pass

@@ -4,6 +4,7 @@ import reflex as rx
 from ..auth_config import lauth
 
 from ..states.app_state import AppState
+from ..states.chat_state import ChatState
 from .sidebar import sidebar
 
 
@@ -21,8 +22,22 @@ def main_layout(content: rx.Component, use_container: bool = True) -> rx.Compone
                 rx.cond(
                     lauth.LocalAuthState.is_authenticated,  # type: ignore[attr-defined]
                     rx.hstack(
-                        rx.text("Conectado", size="2", color="gray"),
-                        rx.button("Salir", size="2", variant="soft", on_click=lauth.LocalAuthState.do_logout),  # type: ignore[attr-defined]
+                        rx.avatar(
+                            fallback=lauth.LocalAuthState.authenticated_user.username[0].upper(),  # type: ignore[attr-defined]
+                            size="2",
+                        ),
+                        rx.vstack(
+                            rx.text("Conectado", size="1", color="gray"),
+                            rx.text(
+                                lauth.LocalAuthState.authenticated_user.username,  # type: ignore[attr-defined]
+                                size="2", 
+                                weight="bold"
+                            ),
+                            spacing="0",
+                            align="start",
+                        ),
+                        rx.button("Salir", size="2", variant="soft", on_click=ChatState.logout_and_cleanup),
+                        spacing="3",
                     ),
                     rx.hstack(
                         rx.link(rx.button("Login", size="2"), href="/login"),
@@ -39,9 +54,9 @@ def main_layout(content: rx.Component, use_container: bool = True) -> rx.Compone
             left="1rem",
             right="1rem",  # ✅ CAMBIO: para que ocupe todo el ancho
             z_index=1001,  # z-index muy alto para estar por encima de todo
-            bg="white",  # ✅ AÑADIR: fondo blanco
+            background="transparent",  # ✅ CAMBIO: fondo transparente para que se vea el gradient
             padding="0.5rem",  # ✅ AÑADIR: padding
-            border_bottom="1px solid var(--gray-4)",  # ✅ AÑADIR: borde
+            border_bottom="1px solid rgba(255, 255, 255, 0.3)",  # ✅ CAMBIO: borde más sutil
         ),
         # --- "DRAWER" MÓVIL (Implementado con rx.box) ---
         # 1. Overlay (fondo oscuro)
@@ -95,8 +110,22 @@ def main_layout(content: rx.Component, use_container: bool = True) -> rx.Compone
                     rx.cond(
                         lauth.LocalAuthState.is_authenticated,  # type: ignore[attr-defined]
                         rx.hstack(
-                            rx.text("Conectado", size="2", color="gray"),
-                            rx.button("Salir", size="2", variant="soft", on_click=lauth.LocalAuthState.do_logout),  # type: ignore[attr-defined]
+                            rx.avatar(
+                                fallback=lauth.LocalAuthState.authenticated_user.username[0].upper(),  # type: ignore[attr-defined]
+                                size="2",
+                            ),
+                            rx.vstack(
+                                rx.text("Conectado", size="1", color="gray"),
+                                rx.text(
+                                    lauth.LocalAuthState.authenticated_user.username,  # type: ignore[attr-defined]
+                                    size="2", 
+                                    weight="bold"
+                                ),
+                                spacing="0",
+                                align="start",
+                            ),
+                            rx.button("Salir", size="2", variant="soft", on_click=ChatState.logout_and_cleanup),
+                            spacing="3",
                         ),
                         rx.hstack(
                             rx.link(rx.button("Login", size="2"), href="/login"),
@@ -106,9 +135,9 @@ def main_layout(content: rx.Component, use_container: bool = True) -> rx.Compone
                     justify="end",
                     align="center",
                     padding="1rem",
-                    border_bottom="1px solid var(--gray-4)",
+                    border_bottom="1px solid rgba(255, 255, 255, 0.3)",
                     width="100%",
-                    bg="white",
+                    background="transparent",
                     display=["none", "none", "flex", "flex"],  # Solo en escritorio
                 ),
                 # Contenido principal
@@ -136,4 +165,5 @@ def main_layout(content: rx.Component, use_container: bool = True) -> rx.Compone
         ),
         height="100vh",
         width="100%",
+        background="linear-gradient(135deg, #c9d1f5 0%, #d7c8e8 100%)",
     )

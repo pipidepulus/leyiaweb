@@ -37,7 +37,7 @@ def sidebar(is_in_drawer: bool = False) -> rx.Component:
                 "Nuevo Análisis",
                 href="/",
                 style={"width": "100%", "color": "blue", "font-weight": "bold"},
-                on_click=[handler for handler in [link_click_handler, ChatState.cleanup_session_files] if handler is not None],
+                on_click=[handler for handler in [link_click_handler, ChatState.limpiar_chat] if handler is not None],
             ),
             rx.vstack(
                 # Enlaces principales - ahora disponibles sin autenticación
