@@ -111,7 +111,7 @@ def index() -> rx.Component:
                         rx.text("• 📋 Análisis de Proyectos de Ley", size="2"),
                         rx.text("• 📚 Biblioteca de Prompts Especializados", size="2"),
                         rx.text("• 📝 Notebooks Personales y Persistentes", size="2"),
-                        rx.text("• 🎤 Transcripción de Audio con Whisper", size="2"),
+                        rx.text("• 🎤 Transcripción de Audio", size="2"),
                         spacing="2",
                         align="start",
                         margin_bottom="1.5rem",

@@ -9,9 +9,16 @@ def token_meter() -> rx.Component:
         rx.card(
             rx.hstack(
                 # Modelo
-                rx.text("Modelo:", weight="bold", size="2"),
                 rx.badge(
-                    rx.cond(ChatState.model_name == "", "desconocido", ChatState.model_name),
+                    rx.hstack(
+                        rx.text("Modelo:", size="2", weight="bold"),
+                        rx.text(
+                            rx.cond(ChatState.model_name == "", "desconocido", ChatState.model_name),
+                            size="2"
+                        ),
+                        spacing="1",
+                        align="center",
+                    ),
                     variant="soft",
                     size="2",
                 ),

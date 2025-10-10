@@ -108,8 +108,8 @@ def file_uploader() -> rx.Component:
                     rx.vstack(
                         rx.text(
                             rx.cond(
-                                has_selected_files,
-                                f"Listo: {selected_files_var[0]}",
+                                files_used_count > 0,
+                                "Archivo procesado.",
                                 "Selecciona un archivo para procesar.",
                             ),
                             size="2",

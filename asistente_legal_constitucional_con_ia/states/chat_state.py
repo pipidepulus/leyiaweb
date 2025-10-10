@@ -832,6 +832,8 @@ class ChatState(rx.State):
         yield ChatState.limpiar_chat
         # Luego hacemos el logout
         yield lauth.LocalAuthState.do_logout  # type: ignore[attr-defined]
+        # Redirigir explícitamente a la página principal
+        return rx.redirect("/")
 
     @rx.event
     async def show_create_notebook_dialog(self):
