@@ -57,6 +57,7 @@ node_modules/
 OPTIMIZATION_TRANSCRIPTION.md
 OPTIMIZATION_SUMMARY.md
 DEPLOYMENT_GUIDE.md
+ANALYSIS_PROGRESS_MESSAGE.md
 test_transcription_optimization.py
 
 # (Removido) 'unused/' ya no existe; si se recrea manualmente, volver a añadir.

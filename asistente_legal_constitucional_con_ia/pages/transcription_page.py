@@ -47,19 +47,55 @@ def transcription_page() -> rx.Component:
                         size="3",
                         margin_top="1rem",
                     ),
-                    # ✅ REFACTORIZADO: El indicador de progreso ahora es más claro
+                    # ✅ REFACTORIZADO: El indicador de progreso ahora es más claro y visual
                     rx.cond(
                         is_processing,
                         rx.vstack(
                             rx.divider(),
-                            rx.hstack(
-                                rx.spinner(),
-                                rx.text(TranscriptionState.progress_message),
-                                align="center",
+                            rx.card(
+                                rx.vstack(
+                                    # Título
+                                    rx.heading(
+                                        "Procesando Transcripción", 
+                                        size="4", 
+                                        color_scheme="blue",
+                                        text_align="center",
+                                    ),
+                                    # Spinner + mensaje principal
+                                    rx.hstack(
+                                        rx.spinner(size="3", color_scheme="blue"),
+                                        rx.text(
+                                            TranscriptionState.progress_message,
+                                            size="3",
+                                            weight="medium",
+                                        ),
+                                        align="center",
+                                        spacing="3",
+                                        justify="center",
+                                    ),
+                                    # Barra de progreso
+                                    rx.progress(
+                                        is_indeterminate=True, 
+                                        width="100%", 
+                                        color_scheme="blue",
+                                        height="8px",
+                                    ),
+                                    # Mensaje informativo
+                                    rx.callout.root(
+                                        rx.callout.icon(rx.icon("info")),
+                                        rx.callout.text(
+                                            "El proceso puede tomar varios minutos dependiendo de la duración del audio. "
+                                            "Puedes dejar esta página abierta y el proceso continuará.",
+                                        ),
+                                        color_scheme="blue",
+                                        variant="soft",
+                                    ),
+                                    spacing="4",
+                                    align="center",
+                                ),
+                                width="100%",
                             ),
-                            rx.progress(is_indeterminate=True, width="100%"),
                             width="100%",
-                            padding_top="1rem",
                         ),
                     ),
                     spacing="4",

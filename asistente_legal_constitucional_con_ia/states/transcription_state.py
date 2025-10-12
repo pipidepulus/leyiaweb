@@ -140,13 +140,16 @@ class TranscriptionState(rx.State):
 
             # Leer archivo (< 1 segundo, no causa timeout)
             self.transcribing = True
-            self.progress_message = f"Archivo '{file.name}' recibido. Iniciando transcripción..."
+            self.progress_message = "🔄 Preparando archivo para transcripción..."
             self.error_message = ""
             
             # ✅ OPTIMIZADO: Obtener workspace_id ANTES de entrar al background task usando versión cacheada
             # Esto reduce el tiempo de respuesta de 10-15s a < 1s en la primera llamada
             # y < 100ms en llamadas subsecuentes (usa caché de sesión)
             self._pending_workspace_id = await self.get_user_workspace_id_cached()
+            
+            # Actualizar mensaje después de obtener workspace_id
+            self.progress_message = f"📤 Enviando '{file.name}' a AssemblyAI..."
             
             # Almacenar datos temporalmente
             self._pending_audio_data = await file.read()
@@ -196,7 +199,7 @@ class TranscriptionState(rx.State):
 
             # Enviar el trabajo
             async with self:
-                self.progress_message = f"Procesando '{filename}' ..."
+                self.progress_message = f"⏳ Subiendo audio al servidor de transcripción..."
             
             submitted_transcript = await asyncio.to_thread(
                 transcriber.submit, 
@@ -205,7 +208,7 @@ class TranscriptionState(rx.State):
             )
 
             async with self:
-                self.progress_message = f"Transcripción en cola (ID: {submitted_transcript.id})."
+                self.progress_message = f"⏱️ Tu archivo está en cola. Puede tomar 2-5 minutos dependiendo de la duración..."
 
             # Sondear el estado
             while True:
@@ -240,10 +243,15 @@ class TranscriptionState(rx.State):
                         f"Error de AssemblyAI: {polled_transcript.error}"
                     )
                 else:
+                    # Traducir estados técnicos a mensajes amigables
+                    status_messages = {
+                        "queued": "⏱️ En cola de procesamiento. Tu transcripción iniciará pronto...",
+                        "processing": "🎙️ Transcribiendo tu audio. Esto puede tomar varios minutos...",
+                    }
                     async with self:
-                        self.progress_message = (
-                            f"Estado: {polled_transcript.status}. "
-                            "Comprobando de nuevo en 5s..."
+                        self.progress_message = status_messages.get(
+                            str(polled_transcript.status),
+                            f"⚙️ Procesando... Verificando estado cada 5 segundos..."
                         )
                     await asyncio.sleep(5)
 
