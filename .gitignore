@@ -53,6 +53,12 @@ node_modules/
 *.tmp
 *.temp
 
+# Archivos de documentación de optimización (internos)
+OPTIMIZATION_TRANSCRIPTION.md
+OPTIMIZATION_SUMMARY.md
+DEPLOYMENT_GUIDE.md
+test_transcription_optimization.py
+
 # (Removido) 'unused/' ya no existe; si se recrea manualmente, volver a añadir.
 
 # Empaquetado/Build de Python
