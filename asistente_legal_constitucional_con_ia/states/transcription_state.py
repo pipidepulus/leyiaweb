@@ -49,6 +49,7 @@ class TranscriptionState(rx.State):
     # ✅ NUEVO: Caché del workspace_id para evitar consultas repetidas a Redis
     _cached_workspace_id: str = ""
     _workspace_id_initialized: bool = False
+    _cached_user_id: str = ""  # ✅ NUEVO: Para detectar cambio de usuario
 
     async def get_user_workspace_id_cached(self) -> str:
         """Obtiene el workspace ID con caché para evitar llamadas repetidas a Redis.
@@ -56,8 +57,28 @@ class TranscriptionState(rx.State):
         Esta versión optimizada reduce drásticamente el tiempo de respuesta en producción
         al cachear el workspace_id por sesión (de 10-15s a < 1s en la primera llamada,
         y < 100ms en llamadas subsecuentes).
+        
+        ✅ SEGURIDAD: Invalida el caché si detecta cambio de usuario.
         """
-        # Si ya está inicializado, devolver el caché inmediatamente
+        # ✅ FIX: Verificar si el usuario cambió antes de usar el caché
+        auth_state = await self.get_state(lauth.LocalAuthState)  # type: ignore[attr-defined]
+        current_user = getattr(auth_state, "authenticated_user", None)
+        
+        # Obtener un identificador único del usuario actual
+        current_user_id = ""
+        if current_user is not None:
+            if hasattr(current_user, "get"):
+                current_user_id = str(current_user.get("id") or current_user.get("username") or current_user.get("email") or "")
+            else:
+                current_user_id = str(getattr(current_user, "id", None) or getattr(current_user, "username", None) or "")
+        
+        # ✅ Si el usuario cambió, invalidar el caché
+        if current_user_id != self._cached_user_id:
+            self._workspace_id_initialized = False
+            self._cached_workspace_id = ""
+            self._cached_user_id = current_user_id
+        
+        # Si ya está inicializado para este usuario, devolver el caché
         if self._workspace_id_initialized and self._cached_workspace_id:
             return self._cached_workspace_id
         
