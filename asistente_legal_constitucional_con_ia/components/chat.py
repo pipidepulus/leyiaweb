@@ -195,6 +195,8 @@ def chat() -> rx.Component:
     return rx.box(
         # Diálogo para crear notebook
         rx.cond(ChatState.show_notebook_dialog, create_notebook_dialog(), rx.fragment()),
+        # Diálogo de confirmación para limpiar chat
+        rx.cond(ChatState.show_clear_confirmation, clear_chat_confirmation_dialog(), rx.fragment()),
         # Botón flotante para crear notebook (solo si hay conversación)
         rx.cond(
             (ChatState.messages.length() >= 4) & (~ChatState.processing),
@@ -255,4 +257,76 @@ def create_notebook_dialog() -> rx.Component:
             max_width="500px",
         ),
         open=ChatState.show_notebook_dialog,
+    )
+
+
+def clear_chat_confirmation_dialog() -> rx.Component:
+    """Diálogo de confirmación para limpiar el chat."""
+    return rx.dialog(
+        rx.dialog.trigger(rx.box()),
+        rx.dialog.content(
+            rx.dialog.title(
+                rx.hstack(
+                    rx.icon("triangle_alert", size=24, color="orange"),
+                    rx.text("¿Comenzar Nuevo Análisis?"),
+                    spacing="2",
+                    align="center",
+                )
+            ),
+            rx.dialog.description(
+                "Estás a punto de limpiar el chat actual. Esta acción no se puede deshacer."
+            ),
+            rx.vstack(
+                rx.callout(
+                    rx.vstack(
+                        rx.text("Se perderán:", weight="bold", size="2"),
+                        rx.text("• Toda la conversación actual", size="2"),
+                        rx.text("• Archivos subidos", size="2"),
+                        rx.text("• Contadores de tokens y costos", size="2"),
+                        spacing="1",
+                        align="start",
+                    ),
+                    icon="info",
+                    color_scheme="orange",
+                    variant="surface",
+                ),
+                rx.callout(
+                    rx.text(
+                        "💡 Consejo: Si quieres guardar esta conversación, "
+                        "créala como notebook antes de continuar.",
+                        size="2",
+                    ),
+                    icon="lightbulb",
+                    color_scheme="blue",
+                    variant="soft",
+                ),
+                spacing="3",
+                width="100%",
+                margin_y="1rem",
+            ),
+            rx.hstack(
+                rx.dialog.close(
+                    rx.button(
+                        "Cancelar",
+                        variant="outline",
+                        on_click=ChatState.hide_clear_confirmation,
+                        size="3",
+                    )
+                ),
+                rx.dialog.close(
+                    rx.button(
+                        rx.icon("trash-2", size=18),
+                        "Sí, Limpiar Chat",
+                        on_click=ChatState.confirm_clear_chat,
+                        color_scheme="red",
+                        size="3",
+                    )
+                ),
+                spacing="3",
+                justify="end",
+                width="100%",
+            ),
+            max_width="500px",
+        ),
+        open=ChatState.show_clear_confirmation,
     )

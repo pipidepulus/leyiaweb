@@ -40,14 +40,22 @@ def transcription_page() -> rx.Component:
                     ),
                     rx.hstack(rx.foreach(rx.selected_files("upload_mp3"), lambda file: rx.text(f"Archivo: {file}"))),
                     rx.button(
-                        "🎙️ Iniciar Transcripción",
+                        rx.cond(
+                            is_processing,
+                            rx.hstack(
+                                rx.spinner(size="2"),
+                                rx.text("Procesando..."),
+                                spacing="2",
+                            ),
+                            rx.text("🎙️ Iniciar Transcripción"),
+                        ),
                         on_click=TranscriptionState.handle_transcription_request(rx.upload_files(upload_id="upload_mp3")),
                         loading=is_processing,
                         disabled=is_processing | no_file_selected,
                         size="3",
                         margin_top="1rem",
                     ),
-                    # ✅ REFACTORIZADO: El indicador de progreso ahora es más claro y visual
+                    # ✅ INDICADOR DE PROGRESO: Muestra el estado de la transcripción en tiempo real
                     rx.cond(
                         is_processing,
                         rx.vstack(

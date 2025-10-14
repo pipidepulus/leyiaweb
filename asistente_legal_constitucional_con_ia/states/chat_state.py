@@ -110,6 +110,8 @@ class ChatState(rx.State):
     notebook_title: str = ""
     # nuevo: para poder cancelar el run en curso
     current_run_id: Optional[str] = None
+    # nuevo: para confirmación de limpieza de chat
+    show_clear_confirmation: bool = False
 
     # límites para estabilidad
     max_chat_messages: int = 80  # conservar últimas 80 entradas en UI
@@ -797,6 +799,26 @@ class ChatState(rx.State):
                 self.current_run_id = None
 
     @rx.event
+    def show_clear_chat_confirmation(self):
+        """Muestra el diálogo de confirmación solo si hay conversación."""
+        if len(self.messages) > 2:  # Más que el mensaje inicial de bienvenida
+            self.show_clear_confirmation = True
+        else:
+            # Si no hay conversación, limpiar directamente
+            return ChatState.limpiar_chat()
+
+    @rx.event
+    def hide_clear_confirmation(self):
+        """Oculta el diálogo de confirmación."""
+        self.show_clear_confirmation = False
+
+    @rx.event
+    def confirm_clear_chat(self):
+        """Confirma y ejecuta la limpieza del chat."""
+        self.show_clear_confirmation = False
+        return ChatState.limpiar_chat()
+
+    @rx.event
     def limpiar_chat(self):
         # Cancelar run en curso y limpiar archivos en background
         yield ChatState.abort_current_run
@@ -822,7 +844,18 @@ class ChatState(rx.State):
         self.current_question = ""
         self.chat_history = []
         self.current_run_id = None
-        logger.info("ChatState.limpiar_chat ejecutado.")
+        
+        # Resetear contadores de tokens y costos
+        self.last_prompt_tokens = 0
+        self.last_completion_tokens = 0
+        self.last_total_tokens = 0
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+        self.total_tokens = 0
+        self.cost_usd = 0.0
+        self.approx_output_tokens = 0
+        
+        logger.info("ChatState.limpiar_chat ejecutado (incluyendo reseteo de contadores).")
 
     @rx.event
     def logout_and_cleanup(self):

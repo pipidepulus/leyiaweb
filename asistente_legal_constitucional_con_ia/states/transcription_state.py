@@ -138,18 +138,27 @@ class TranscriptionState(rx.State):
                 yield rx.toast.error(f"'{file.name}' no es un MP3.")
                 return
 
-            # Leer archivo (< 1 segundo, no causa timeout)
+            # ✅ MEJORA UI: Feedback INMEDIATO al usuario antes de cualquier operación
             self.transcribing = True
-            self.progress_message = "🔄 Preparando archivo para transcripción..."
+            self.progress_message = f"🔄 Iniciando proceso para '{file.name}'..."
             self.error_message = ""
+            yield  # 👈 Actualizar UI INMEDIATAMENTE
+            
+            # Leer archivo (< 1 segundo, no causa timeout)
+            self.progress_message = "📖 Leyendo archivo de audio..."
+            yield  # 👈 Mostrar que estamos leyendo
             
             # ✅ OPTIMIZADO: Obtener workspace_id ANTES de entrar al background task usando versión cacheada
             # Esto reduce el tiempo de respuesta de 10-15s a < 1s en la primera llamada
             # y < 100ms en llamadas subsecuentes (usa caché de sesión)
+            self.progress_message = "🔐 Verificando credenciales de usuario..."
+            yield  # 👈 Indicar que estamos verificando
+            
             self._pending_workspace_id = await self.get_user_workspace_id_cached()
             
             # Actualizar mensaje después de obtener workspace_id
-            self.progress_message = f"📤 Enviando '{file.name}' a AssemblyAI..."
+            self.progress_message = f"📤 Preparando envío de '{file.name}' a AssemblyAI..."
+            yield  # 👈 Confirmar preparación
             
             # Almacenar datos temporalmente
             self._pending_audio_data = await file.read()

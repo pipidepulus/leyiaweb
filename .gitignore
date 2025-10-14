@@ -60,6 +60,15 @@ DEPLOYMENT_GUIDE.md
 ANALYSIS_PROGRESS_MESSAGE.md
 test_transcription_optimization.py
 
+# Archivos de documentación de mejoras (internos)
+INFORME_RESETEO_CHAT.md
+MEJORAS_RESETEO_CHAT.md
+RESUMEN_MEJORAS.md
+RESUMEN_EJECUTIVO_MEJORAS.md
+GUIA_PRUEBAS_MEJORAS.md
+INDICE_DOCUMENTACION.md
+README_MEJORAS.md
+
 # (Removido) 'unused/' ya no existe; si se recrea manualmente, volver a añadir.
 
 # Empaquetado/Build de Python
