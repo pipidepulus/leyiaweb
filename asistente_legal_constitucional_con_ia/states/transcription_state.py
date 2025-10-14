@@ -422,6 +422,15 @@ class TranscriptionState(rx.State):
         self.transcribing = False
         self.progress_message = ""
         self.error_message = ""
+        # Ocultar el placeholder de feedback instantáneo
+        yield rx.call_script(
+            """
+            const placeholder = document.getElementById('instant-feedback-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+            """
+        )
 
     @rx.event
     async def refresh_transcriptions(self):

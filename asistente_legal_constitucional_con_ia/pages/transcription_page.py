@@ -49,16 +49,52 @@ def transcription_page() -> rx.Component:
                             ),
                             rx.text("🎙️ Iniciar Transcripción"),
                         ),
-                        on_click=TranscriptionState.handle_transcription_request(rx.upload_files(upload_id="upload_mp3")),
+                        on_click=[
+                            rx.call_script(
+                                """
+                                (function() {
+                                    const placeholder = document.getElementById('instant-feedback-placeholder');
+                                    if (placeholder) {
+                                        placeholder.style.display = 'block';
+                                    }
+                                })();
+                                """
+                            ),
+                            TranscriptionState.handle_transcription_request(rx.upload_files(upload_id="upload_mp3")),
+                        ],
                         loading=is_processing,
                         disabled=is_processing | no_file_selected,
                         size="3",
+                        margin_top="1rem",
+                    ),
+                    # ✅ FEEDBACK INSTANTÁNEO del lado del cliente (aparece sin esperar al servidor)
+                    rx.box(
+                        rx.callout.root(
+                            rx.callout.icon(rx.icon("loader", class_name="animate-spin")),
+                            rx.callout.text(
+                                "🔄 Iniciando proceso de transcripción...",
+                                weight="medium",
+                            ),
+                            color_scheme="blue",
+                            variant="soft",
+                        ),
+                        id="instant-feedback-placeholder",
+                        display="none",
                         margin_top="1rem",
                     ),
                     # ✅ INDICADOR DE PROGRESO: Muestra el estado de la transcripción en tiempo real
                     rx.cond(
                         is_processing,
                         rx.vstack(
+                            # Ocultar el placeholder cuando aparezca el indicador real
+                            rx.script(
+                                """
+                                const placeholder = document.getElementById('instant-feedback-placeholder');
+                                if (placeholder) {
+                                    placeholder.style.display = 'none';
+                                }
+                                """
+                            ),
                             rx.divider(),
                             rx.card(
                                 rx.vstack(
